@@ -2,7 +2,7 @@
 
 import os
 from typing import Optional, Literal
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -31,6 +31,13 @@ class Config(BaseSettings):
 	
 	# Настройки авторизации OAuth2
 	auth_mode: Literal["none", "oauth2"] = Field(default="none", description="Режим авторизации: none или oauth2")
+
+	@field_validator("auth_mode", mode="before")
+	@classmethod
+	def normalize_auth_mode(cls, v: str) -> str:
+		if isinstance(v, str):
+			return v.lower()
+		return v
 	public_url: Optional[str] = Field(default=None, description="Публичный URL прокси для OAuth2 (если не задан, формируется из запроса)")
 	oauth2_code_ttl: int = Field(default=120, description="TTL authorization code в секундах")
 	oauth2_access_ttl: int = Field(default=3600, description="TTL access token в секундах")

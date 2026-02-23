@@ -121,7 +121,7 @@ def create_parser() -> argparse.ArgumentParser:
 	# OAuth2 аргументы
 	parser.add_argument(
 		"--auth-mode",
-		type=str,
+		type=str.lower,
 		choices=["none", "oauth2"],
 		help="Режим авторизации: none или oauth2"
 	)
@@ -174,7 +174,7 @@ async def main():
 		os.environ["MCP_ONEC_URL"] = args.onec_url
 	if args.onec_username:
 		os.environ["MCP_ONEC_USERNAME"] = args.onec_username
-	if args.onec_password:
+	if args.onec_password is not None:
 		os.environ["MCP_ONEC_PASSWORD"] = args.onec_password
 	if args.onec_service_root:
 		os.environ["MCP_ONEC_SERVICE_ROOT"] = args.onec_service_root
