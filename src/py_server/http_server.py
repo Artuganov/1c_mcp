@@ -545,8 +545,7 @@ class MCPHttpServer:
 						auth=httpx.BasicAuth(username, password)
 					)
 					
-					if response.status_code != 200:
-						# Неверные креденшилы
+					if response.status_code == 401:
 						error_html = f"""
 						<!DOCTYPE html>
 						<html>
@@ -567,6 +566,37 @@ class MCPHttpServer:
 						</html>
 						"""
 						return HTMLResponse(content=error_html, status_code=401)
+
+					if response.status_code == 403:
+						error_html = f"""
+						<!DOCTYPE html>
+						<html>
+						<head>
+							<meta charset="utf-8">
+							<title>Недостаточно прав</title>
+							<style>
+								body {{ font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; }}
+								.error {{ color: red; }}
+								.hint {{ color: #555; margin-top: 15px; }}
+								a {{ color: #007bff; text-decoration: none; }}
+							</style>
+						</head>
+						<body>
+							<h1>Недостаточно прав</h1>
+							<p class="error">Пользователь <b>{username}</b> не имеет прав на работу с MCP HTTP-сервисом в 1С.</p>
+							<p class="hint">Обратитесь к администратору 1С для назначения роли с доступом к HTTP-сервису «{self.config.onec_service_root}».</p>
+							<p><a href="javascript:history.back()">← Вернуться назад</a></p>
+						</body>
+						</html>
+						"""
+						return HTMLResponse(content=error_html, status_code=403)
+
+					if response.status_code != 200:
+						logger.warning(f"1С вернула статус {response.status_code} при проверке креденшилов пользователя {username}")
+						return HTMLResponse(
+							content=f"<html><body><h1>Ошибка</h1><p>1С вернула неожиданный статус {response.status_code}</p></body></html>",
+							status_code=502
+						)
 			except Exception as e:
 				logger.error(f"Ошибка проверки креденшилов 1С: {e}")
 				return HTMLResponse(
@@ -607,25 +637,38 @@ class MCPHttpServer:
 			
 			# Password Grant - самый простой вариант
 			if grant_type == "password":
-				if not username or not password:
+				if username is None:
 					return JSONResponse(
 						status_code=400,
-						content={"error": "invalid_request", "error_description": "Missing username or password"}
+						content={"error": "invalid_request", "error_description": "Missing username"}
 					)
-				
+
 				# Валидация креденшилов через 1С
 				try:
 					async with httpx.AsyncClient(timeout=10.0) as client:
 						health_url = f"{self.config.onec_url}/hs/{self.config.onec_service_root}/health"
 						response = await client.get(
 							health_url,
-							auth=httpx.BasicAuth(username, password)
+							auth=httpx.BasicAuth(username, password or "")
 						)
-						
-						if response.status_code != 200:
+
+						if response.status_code == 401:
 							return JSONResponse(
 								status_code=400,
 								content={"error": "invalid_grant", "error_description": "Invalid username or password"}
+							)
+
+						if response.status_code == 403:
+							return JSONResponse(
+								status_code=403,
+								content={"error": "insufficient_scope", "error_description": f"User '{username}' does not have permissions for MCP HTTP service. Contact 1C administrator to assign the required role."}
+							)
+
+						if response.status_code != 200:
+							logger.warning(f"1C returned status {response.status_code} during credential check for user {username}")
+							return JSONResponse(
+								status_code=502,
+								content={"error": "server_error", "error_description": f"1C returned unexpected status {response.status_code}"}
 							)
 				except Exception as e:
 					logger.error(f"Ошибка проверки креденшилов 1С для password grant: {e}")
