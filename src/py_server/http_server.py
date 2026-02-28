@@ -34,7 +34,7 @@ class OAuth2BearerMiddleware(BaseHTTPMiddleware):
 		super().__init__(app)
 		self.oauth2_service = oauth2_service
 		self.auth_mode = auth_mode
-		self.protected_paths = ["/mcp/", "/sse"]
+		self.protected_paths = ["/mcp", "/sse"]
 	
 	async def dispatch(self, request: Request, call_next):
 		"""Проверка авторизации для защищённых путей."""
@@ -146,11 +146,11 @@ class MCPHttpServer:
 			auth_mode=config.auth_mode
 		)
 		
-		# Монтируем транспорты
-		self._mount_transports()
-		
-		# Регистрация основных маршрутов
+		# Регистрация основных маршрутов (ПЕРЕД монтированием транспортов!)
 		self._register_routes()
+		
+		# Монтируем транспорты (mount идёт после register_routes)
+		self._mount_transports()
 	
 	@asynccontextmanager
 	async def _lifespan(self, app: FastAPI):
@@ -351,6 +351,21 @@ class MCPHttpServer:
 					"auth": {"mode": self.config.auth_mode}
 				}
 		
+		# Роут /mcp без trailing slash — редирект на https:// с trailing slash
+		# FastAPI mount("/mcp/") вызывает 307 redirect на http:// за прокси
+		@self.app.api_route("/mcp", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+		async def mcp_no_slash_redirect(request: Request):
+			"""Redirect /mcp -> /mcp/ с правильной схемой https."""
+			if self.config.public_url:
+				target = f"{self.config.public_url}/mcp/"
+			else:
+				target = str(request.url).rstrip('/') + '/'
+			# Для POST-запросов используем 307 чтобы сохранить метод и тело
+			if request.method == "GET":
+				return RedirectResponse(url=target, status_code=301)
+			else:
+				return RedirectResponse(url=target, status_code=307)
+		
 		# OAuth2 endpoints (если включено)
 		if self.config.auth_mode == "oauth2":
 			self._register_oauth2_routes()
@@ -359,8 +374,15 @@ class MCPHttpServer:
 		"""Регистрация OAuth2 маршрутов."""
 		
 		@self.app.get("/.well-known/oauth-protected-resource")
-		async def well_known_prm(request: Request):
-			"""Protected Resource Metadata (RFC 9728)."""
+		@self.app.get("/.well-known/oauth-protected-resource/{path:path}")
+		async def well_known_prm(request: Request, path: str = ""):
+			"""Protected Resource Metadata (RFC 9728).
+			
+			Also handles path-suffixed requests like:
+			  /.well-known/oauth-protected-resource/sse
+			  /.well-known/oauth-protected-resource/mcp
+			Claude.ai appends the transport path to .well-known URLs.
+			"""
 			# Определяем публичный URL
 			if self.config.public_url:
 				public_url = self.config.public_url
@@ -373,7 +395,8 @@ class MCPHttpServer:
 			return self.oauth2_service.generate_prm_document(public_url)
 		
 		@self.app.get("/.well-known/oauth-authorization-server")
-		async def well_known_as_metadata(request: Request):
+		@self.app.get("/.well-known/oauth-authorization-server/{path:path}")
+		async def well_known_as_metadata(request: Request, path: str = ""):
 			"""Authorization Server Metadata (RFC 8414)."""
 			# Определяем публичный URL
 			if self.config.public_url:
