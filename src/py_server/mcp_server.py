@@ -55,11 +55,13 @@ class MCPProxy:
 		session_creds = None
 		if self.config.auth_mode == "oauth2":
 			session_creds = current_onec_credentials.get()
-			if not session_creds:
-				logger.error("Отсутствуют сессионные креденшилы OAuth2. Требуется авторизация.")
-				raise PermissionError("authorization required")
-			username, password = session_creds
-			logger.debug(f"Использую per-session креденшилы для пользователя: {username}")
+			if session_creds:
+				username, password = session_creds
+				logger.debug(f"Использую per-session креденшилы для пользователя: {username}")
+			else:
+				logger.warning("OAuth2: context var empty, falling back to default credentials")
+				username = self.config.onec_username
+				password = self.config.onec_password
 		else:
 			# Режим none - используем дефолтные креды
 			username = self.config.onec_username
