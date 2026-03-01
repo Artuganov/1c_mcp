@@ -76,6 +76,7 @@
 			<DataProcessor>mcp_РесурсОписаниеСинтаксисаВстроенногоЯзыка</DataProcessor>
 			<DataProcessor>mcp_ИнструментБанковскаяВыписка</DataProcessor>
 			<DataProcessor>mcp_ИнструментДебиторскаяЗадолженность</DataProcessor>
+			<InformationRegister>mcp_ДинамическиеИнструменты</InformationRegister>
 		</ChildObjects>
 	</Configuration>
 </MetaDataObject>
