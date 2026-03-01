@@ -74,6 +74,8 @@
 			<DataProcessor>mcp_УправлениеСервером</DataProcessor>
 			<DataProcessor>mcp_ИнструментДанныеОКонфигурации</DataProcessor>
 			<DataProcessor>mcp_РесурсОписаниеСинтаксисаВстроенногоЯзыка</DataProcessor>
+			<DataProcessor>mcp_ИнструментБанковскаяВыписка</DataProcessor>
+			<DataProcessor>mcp_ИнструментДебиторскаяЗадолженность</DataProcessor>
 		</ChildObjects>
 	</Configuration>
 </MetaDataObject>

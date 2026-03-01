@@ -17,6 +17,8 @@
 			<Picture/>
 			<Content>
 				<xr:Item xsi:type="xr:MDObjectRef">DataProcessor.mcp_ИнструментДанныеОКонфигурации</xr:Item>
+				<xr:Item xsi:type="xr:MDObjectRef">DataProcessor.mcp_ИнструментБанковскаяВыписка</xr:Item>
+				<xr:Item xsi:type="xr:MDObjectRef">DataProcessor.mcp_ИнструментДебиторскаяЗадолженность</xr:Item>
 			</Content>
 		</Properties>
 		<ChildObjects/>
